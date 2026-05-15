@@ -1,19 +1,26 @@
-
-jQuery(document).ready(function($){
-    $('.upload_image_button').click(function(e) {
+jQuery(document).ready(function($) {
+    $('.upload_image_button').on('click', function(e) {
         e.preventDefault();
         var button = $(this);
-        var target_id = button.data('target');
+        var monitorId = button.data('monitor');
         var custom_uploader = wp.media({
-            title: 'Seleccionar Imagen para TV',
+            title: 'Select Image',
             button: {
-                text: 'Usar esta imagen'
+                text: 'Use this image'
             },
             multiple: false
         }).on('select', function() {
             var attachment = custom_uploader.state().get('selection').first().toJSON();
-            $('#' + target_id).val(attachment.url);
-            button.siblings('.image_preview').html('<img src="' + attachment.url + '" style="max-width:150px; height:auto;">');
+            $('#url_' + monitorId).val(attachment.url);
+            $('#preview_' + monitorId).html('<img src="' + attachment.url + '" style="max-width:100%; height:auto;" />');
         }).open();
+    });
+
+    $('.remove_image_button').on('click', function(e) {
+        e.preventDefault();
+        var button = $(this);
+        var monitorId = button.data('monitor');
+        $('#url_' + monitorId).val('');
+        $('#preview_' + monitorId).html('');
     });
 });
