@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Retro Canvas Gallery
  * Description: An interactive retro-tech gallery using HTML5 Canvas and Fabric.js.
- * Version: 1.2
+ * Version: 3.0.6
  * Author: Jaime Sanchez Chirivella
  * Text Domain: retro-canvas-gallery
  */
@@ -40,8 +40,8 @@ class RetroCanvasGallery {
             return;
         }
         wp_enqueue_media();
-        wp_enqueue_script('retro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery'], '1.2', true);
-        wp_enqueue_style('retro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/style.css', [], '1.2');
+        wp_enqueue_script('retro-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery'], '3.0.2', true);
+        wp_enqueue_style('retro-admin-css', plugin_dir_url(__FILE__) . 'assets/css/style.css', [], '3.0.2');
     }
 
     public function render_settings_page() {
@@ -53,13 +53,20 @@ class RetroCanvasGallery {
             <form method="post" action="options.php">
                 <?php settings_fields('retro_gallery_options'); ?>
                 <div class="retro-monitors-grid">
-                    <?php for ($i = 1; $i <= 6; $i++) : 
+                    <?php for ($i = 1; $i <= 36; $i++) : 
+                        if (($i - 1) % 6 === 0) {
+                            $channelNum = floor(($i - 1) / 6) + 1;
+                            echo '<h2 style="width:100%; border-bottom:1px solid #ccc; padding-bottom:10px; margin-top:30px; grid-column: 1 / -1;">Canal ' . $channelNum . ' ' . ($channelNum === 1 ? '(Canal Inicial / Activo)' : '(Imágenes Extra a la espera)') . '</h2>';
+                        }
+
                         $monitor = isset($settings['monitor_' . $i]) ? $settings['monitor_' . $i] : [
                             'url' => '',
                             'title' => '',
                             'description' => ''
                         ];
-                        $label = ($i === 1) ? 'Monitor Principal (Grande)' : 'Monitor Secundario ' . ($i - 1);
+                        
+                        $posInChannel = ($i - 1) % 6 + 1;
+                        $label = ($posInChannel === 1) ? 'Slot Principal (Grande)' : 'Slot Secundario ' . ($posInChannel - 1);
                         ?>
                         <div class="retro-monitor-section">
                             <h3><?php echo esc_html($label); ?></h3>
@@ -91,15 +98,24 @@ class RetroCanvasGallery {
 
     public function render_shortcode() {
         $settings = get_option('retro_gallery_settings', []);
+
+        // Force HTTPS on all stored image URLs to avoid Mixed Content errors
+        $safe_settings = [];
+        foreach ($settings as $key => $monitor) {
+            if (is_array($monitor) && isset($monitor['url'])) {
+                $monitor['url'] = set_url_scheme($monitor['url'], 'https');
+            }
+            $safe_settings[$key] = $monitor;
+        }
         
         // Enqueue frontend scripts
         wp_enqueue_script('fabric-js', 'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js', [], '5.3.1', true);
-        wp_enqueue_script('retro-gallery-js', plugin_dir_url(__FILE__) . 'assets/js/script.js', ['fabric-js'], '1.1', true);
-        wp_enqueue_style('retro-gallery-css', plugin_dir_url(__FILE__) . 'assets/css/style.css', [], '1.1');
+        wp_enqueue_script('retro-gallery-js', plugin_dir_url(__FILE__) . 'assets/js/script.js', ['fabric-js'], '3.0.6', true);
+        wp_enqueue_style('retro-gallery-css', plugin_dir_url(__FILE__) . 'assets/css/style.css', [], '3.0.6');
 
         // Pass settings to JS
         wp_localize_script('retro-gallery-js', 'retroGalleryData', [
-            'settings' => $settings,
+            'settings' => $safe_settings,
             'pluginUrl' => plugin_dir_url(__FILE__),
             'imgUrl' => plugin_dir_url(__FILE__) . 'img/'
         ]);
@@ -109,8 +125,10 @@ class RetroCanvasGallery {
         <div id="retro-canvas-wrapper" class="retro-canvas-wrapper">
             <canvas id="retro-canvas"></canvas>
             <div id="fullscreen-overlay" class="fullscreen-overlay" style="display:none;">
+                <p id="fullscreen-desc" style="color:#fff; text-align:center; font-family:'Courier New',monospace; font-size:2rem; margin: 0 auto 18px; max-width:80%; background:rgba(0,0,0,0.6); padding:12px 24px; border-radius:4px;"></p>
+                <img id="fullscreen-main-img" src="" style="max-width: 90%; max-height: 80%; margin: auto; display: block; object-fit: contain;" />
                 <div id="exit-fullscreen" class="exit-fullscreen">
-                    <img src="<?php echo plugin_dir_url(__FILE__) . 'img/emergency-exit.png'; ?>" alt="Exit" />
+                <img src="<?php echo plugin_dir_url(__FILE__) . 'img/exit-sign.png'; ?>" alt="Exit" />
                 </div>
                 <div class="nav-controls">
                     <button id="prev-btn" class="nav-btn">&lsaquo;</button>
